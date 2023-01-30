@@ -5,11 +5,12 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"github.com/GO_NATIVE/lib/msgqueue"
 	"github.com/GO_NATIVE/lib/persistence"
 )
 
-func ServeAPI(endpoint, tlsendpoint string, databasehandler persistence.DatabaseHandler) (chan error, chan error) {
-	handler := NewEventHandler(databasehandler)
+func ServeAPI(endpoint, tlsendpoint string, databasehandler persistence.DatabaseHandler, eventEmitter msgqueue.EventEmitter) (chan error, chan error) {
+	handler := NewEventHandler(databasehandler, eventEmitter)
 	r := mux.NewRouter()
 	httpErrChan := make(chan error)
 	httptlsErrChan := make(chan error)

@@ -1,22 +1,28 @@
 package rest
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/GO_NATIVE/contracts"
+	"github.com/GO_NATIVE/lib/msgqueue"
 	"github.com/GO_NATIVE/lib/persistence"
 	"github.com/gorilla/mux"
 )
 
 type eventServiceHandler struct {
-	dbhandler persistence.DatabaseHandler
+	dbhandler    persistence.DatabaseHandler
+	eventEmitter msgqueue.EventEmitter
 }
 
-func NewEventHandler(databasehandler persistence.DatabaseHandler) *eventServiceHandler {
+func NewEventHandler(databasehandler persistence.DatabaseHandler, eventEmitter msgqueue.EventEmitter) *eventServiceHandler {
 	return &eventServiceHandler{
-		dbhandler: databasehandler,
+		dbhandler:    databasehandler,
+		eventEmitter: eventEmitter,
 	}
 }
 
@@ -83,7 +89,16 @@ func (eh *eventServiceHandler) newEventHandler(w http.ResponseWriter, r *http.Re
 
 	id, err := eh.dbhandler.AddEvent(event)
 
-	if nil != err {
+	msg := contracts.EventCreatedEvent{
+		ID:         hex.EncodeToString(id),
+		Name:       event.Name,
+		LocationID: event.Location.ID.Hex(),
+		Start:      time.Unix(event.StartDate, 0),
+		End:        time.Unix(event.EndDate, 0),
+	}
+	eh.eventEmitter.Emit(&msg)
+
+	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprintf(w, "{error: error occured while persisting event %d %s}", id, err)
 		return
